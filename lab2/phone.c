@@ -5,7 +5,7 @@ int main() {
 	char phone[11];
 
 
-	scanf("%d %s", &number, &phone[0]);
+	scanf("%s %d", &phone[0], &number);
 	
         if (number == -1) {
 	    printf("%s", phone);
