@@ -38,6 +38,34 @@ int main(int argc, char **argv) {
     char *name = argv[2];
 
     // Your code goes here
+    //printf("length of argv 1 is %ld\n", strlen(argv[1]));
+    // first copy greeting message into greeting
+    if (strlen(argv[1]) >= 19) {
+        strncpy(greeting, argv[1], 19);
+        greeting[19] = '\0';
+        //printf("length of greeting array is %ld\n", strlen(greeting));
+
+    }
+
+    else { // argv[1] is less than 19
+        strcpy(greeting, argv[1]);
+        greeting[strlen(argv[1])] = ' '; // thus, will have room for the space
+        greeting[strlen(argv[1]) + 1] = '\0'; 
+        //printf("length of greeting array is is %ld\n", strlen(greeting));
+        
+    }
+
+    if ((strlen(greeting) + strlen(name)) <= 19) { 
+        strcat(greeting, name);
+        //printf("Size of new greeting array after adding name is %ld\n", strlen(greeting));
+        //greeting[strlen(greeting)] = '\0';
+    }
+
+    else if (strlen(greeting) < 19) { // greeting is less than 19 (so has a space but can still concatenate stuff) but greeting + name is > 19
+        strncat(greeting, name, 19 - strlen(greeting));
+        //printf("size of greeting array is %ld\n", strlen(greeting));
+        //greeting[19] = '\0'; 
+    }        
 
 
     printf("%s\n", greeting);

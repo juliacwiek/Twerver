@@ -1,4 +1,4 @@
-#include <stdlib.h>
+	#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -11,6 +11,22 @@
     if s is the string "function" and n is 3, then truncate() changes s to
     the string "fun" and returns 5.
 */
+
+int truncate(char s[], int n) {
+
+    int original = strlen(s);
+    if (strlen(s) > n) {
+        //printf("number of characters removed is %ld\n", strlen(s) - n);
+        s[strlen(s) - (strlen(s) - n)] = '\0';
+        //printf("new string is %s\n", s);
+        return original - n;
+    }
+
+    else {
+        //printf("match\n");
+        return 0;
+    }
+}
 
 
 
