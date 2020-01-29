@@ -48,6 +48,10 @@ int main(int argc, char **argv) {
         }
         int number2;
         FILE *file = fopen(argv[2], "r");
+
+        if (file == NULL) {
+            return 1;
+        }
 	
 	while (fscanf(file, "%d", &number2) == 1) {
 	    add_to_tally(number2, position, tally);
@@ -56,7 +60,12 @@ int main(int argc, char **argv) {
         for (int c = 0; c < BASE; c++) {
             printf("%ds: %d\n", c, tally[c]);
         }
+
+        if (fclose(file) != 0) {
+            return 1;
+        }
+
     }
 
-    
+    return 0;
 }
