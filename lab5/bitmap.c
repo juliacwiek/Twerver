@@ -9,6 +9,27 @@
  */
 void read_bitmap_metadata(FILE *image, int *pixel_array_offset, int *width, int *height) {
 
+    /* read in location of the pixel array */
+    fseek(image, 10, SEEK_SET);
+    int error1 = fread(pixel_array_offset, 4, 1, image);
+    if (error1 != 1) {
+        fprintf(stderr, "Error: reading pixels"); 
+    }
+
+    /* read in image width */
+    fseek(image, 4, SEEK_CUR);
+    int error2 = fread(width, 4, 1, image);
+    if (error2 != 1) {
+        fprintf(stderr, "Error: reading pixels"); 
+    }
+
+    /* read in image height */
+    int error3 = fread(height, 4, 1, image);
+    if (error3 != 1) {
+        fprintf(stderr, "Error: reading pixels"); 
+    }
+    
+
 }
 
 /*
@@ -28,6 +49,33 @@ void read_bitmap_metadata(FILE *image, int *pixel_array_offset, int *width, int 
  * 4. Return the address of the first `struct pixel *` you initialized.
  */
 struct pixel **read_pixel_array(FILE *image, int pixel_array_offset, int width, int height) {
+    
+    /* 1 */
+    struct pixel **array = malloc(sizeof(struct pixel*) * height);
+    
+    /* 2 */
+    for (int i = 0; i < height; i++) {
+        array[i] = malloc(sizeof(struct pixel) * width);
+    }
+
+    /* setting curr position to pixel_array_offset */
+    fseek(image, pixel_array_offset, SEEK_SET);
+    
+    /* 3 */
+    for (int a = 0; a < height; a++) {
+        for (int b = 0; b < width; b++) {
+            int errorA = 0;
+            errorA += fread(&(array[a][b].blue), sizeof(unsigned char), 1, image);
+            errorA += fread(&(array[a][b].green), sizeof(unsigned char), 1, image);
+            errorA += fread(&(array[a][b].red), sizeof(unsigned char), 1, image);
+            if (errorA != 3) {
+                fprintf(stderr, "Error: reading pixels"); 
+            }
+        }
+    }
+
+    /* 4 */ 
+    return array;
 
 }
 
