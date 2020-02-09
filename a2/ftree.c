@@ -159,7 +159,24 @@ void deallocate_ftree (struct TreeNode *node) {
    
    // Your implementation here.
 
+	if (node != NULL) {
+		if (node->type == 'd') {
+			if (node->contents == NULL) {
+				free(node);
+			} else {
+				deallocate_ftree(node->contents);
+			}
 
+		} else {
+			if (node->next != NULL) {
+				// deallocate_ftree((node->next)->fname);
+				deallocate_ftree(node->next);
+				free(node);
+			} else {
+				free(node);
+			}
+		}
+	}
 
 }  
 
