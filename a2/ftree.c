@@ -1,5 +1,11 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <dirent.h>
+
 // Add your system includes here.
+#include <sys/types.h>
+#include <sys/stat.h>
 
 #include "ftree.h"
 
@@ -51,5 +57,89 @@ void print_ftree(struct TreeNode *root) {
 void deallocate_ftree (struct TreeNode *node) {
    
    // Your implementation here.
+
+}  
+
+/* 
+ * Calls lstat on a single file and prints all of the information that you need to store in a TreeNode
+ * 
+ */
+
+int printInfo (const char *path) {
+
+    struct stat stat_buf;
+    
+	if (lstat(path, &stat_buf) == -1) {
+	        perror("lstat");        
+	        return 1;    
+    }
+
+    // print file name
+
+
+    // check type and print
+    if (S_ISREG(stat_buf.st_mode)) {
+          printf("%s is a regular file\n", path);    
+    }
+
+    else if (S_ISDIR(stat_buf.st_mode)) {
+          printf("%s is a directory\n", path);    
+    }
+
+    else {
+    	printf("%s is a link\n", path); 
+    }
+
+
+    // extract permissions and print
+    int permissions = stat_buf.st_mode & 0777;
+    printf("the file permissions are %o\n", permissions);
+
+    return 0;
+
+}
+
+ /* 
+ *  Checks if a file is a directory and, if it is, uses opendir and readdir to print the names of all the files in the directory
+ * 
+ */
+
+int isDir (const char *path) {
+    
+    struct stat stat_buf;
+    if (lstat(path, &stat_buf) == -1) {
+	        perror("lstat");        
+	        return 1;    
+    }
+
+    // check if the path is a directory
+    if (S_ISDIR(stat_buf.st_mode)) {
+        DIR *d_ptr = opendir(path);
+
+        if (d_ptr == NULL) {
+        	perror("opendir");
+        	return 1;
+        }
+        
+        // stores info about a directory entry
+        struct dirent *entry_ptr;
+
+        // call readdir to get struct dirent, which represents a directory entry
+        entry_ptr = readdir(d_ptr);
+        printf("Directory %s contains:\n", path);    
+        while (entry_ptr != NULL) {
+            printf("%s\n", entry_ptr->d_name);
+            entry_ptr = readdir(d_ptr);    
+        }
+
+        int error = closedir(d_ptr);
+        if (error != 0) {
+        	perror("closedir");
+        	return 1;
+        }
+
+    }
+
+    return 0;
 
 }
