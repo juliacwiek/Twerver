@@ -20,6 +20,8 @@
  */
 struct TreeNode *generate_ftree(const char *fname) {
 
+	static int tree_depth = 0;
+
     // Your implementation here.
 
     // Hint: consider implementing a recursive helper function that
@@ -43,7 +45,7 @@ struct TreeNode *generate_ftree(const char *fname) {
     	exit(1);
     }
 
-    // set name of the current file to this node's fname
+    // set name of the current file to this node's fname [FIX THIS]
     fileSystem->fname = malloc(sizeof(char) * strlen(fname) + 1);
 
     // check to see if malloc call failed
@@ -51,32 +53,6 @@ struct TreeNode *generate_ftree(const char *fname) {
     	fprintf(stderr, "Fatal: failed to allocate bytes");
     	exit(1);
     }
-
-    // fix
-    //char file_name[1024];
-    int len_to_slash = 0;
-    int count = strlen(fname) - 1;
-    char *p = &fname[count];
-    while ((*p != '/') && (count > -1)) {
-    	len_to_slash++;
-    	p--;
-    	count--;
-    }
-
-    char file_name[1024];
-    int index = strlen(fname) - 1;
-    int q = len_to_slash - 1;
-
-    while (q > -1) {
-    	file_name[q] = fname[index];
-    	index--;
-    	q--;
-    }
-    file_name[len_to_slash] = '\0';
-    //fname[len_to_slash] = '\0';
-
-    //printf("%s\n", file_name);
-    strcpy(fileSystem->fname, file_name);
 
     // initialize struct stat and then read in info about the current file 
     // to this struct stat using lstat
@@ -97,20 +73,46 @@ struct TreeNode *generate_ftree(const char *fname) {
     fileSystem->contents = NULL;
     fileSystem->next = NULL;
 
-    // find type of file and set type attribute:
+    // get name of file (extract from fname argument)
+    if (tree_depth == 0) { strcpy(fileSystem->fname, fname); }
+    else {
+    	int len_to_slash = 0;
+    	int count = strlen(fname) - 1;
+    	char *p = &fname[count];
+    	while ((*p != '/') && (count > -1)) {
+    		len_to_slash++;
+    		p--;
+    		count--;
+    	}
 
-    // regular file
+    	char file_name[1024];
+    	int index = strlen(fname) - 1;
+    	int q = len_to_slash - 1;
+
+    	while (q > -1) {
+    		file_name[q] = fname[index];
+    		index--;
+    		q--;
+    	}
+
+    	file_name[len_to_slash] = '\0';
+        strcpy(fileSystem->fname, file_name);
+    }
+
+    // if regular file
     if (S_ISREG(stat_buf.st_mode)) { 
     	fileSystem->type = '-'; 
     }
 
-    // link
+    // if link
     else if (S_ISLNK(stat_buf.st_mode)) { 
     	fileSystem->type = 'l';
     }
 
     // else, the file is a directory
     else {
+
+    	tree_depth++;
 
     	fileSystem->type = 'd';
     	DIR *d_ptr = opendir(fname);
@@ -124,7 +126,6 @@ struct TreeNode *generate_ftree(const char *fname) {
         struct dirent *curr_file;
 
         // traverse directory, making recursive calls as you go
-
         int files_traversed = 1;
         while ((curr_file = readdir(d_ptr)) != NULL) {
         	
@@ -190,7 +191,6 @@ struct TreeNode *generate_ftree(const char *fname) {
     }
 
     return fileSystem;
-
 }
 
 /*
