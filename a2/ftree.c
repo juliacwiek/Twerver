@@ -22,14 +22,6 @@ struct TreeNode *generate_ftree(const char *fname) {
 
 	static int tree_depth = 0;
 
-    // Your implementation here.
-
-    // Hint: consider implementing a recursive helper function that
-    // takes fname and a path.  For the initial call on the 
-    // helper function, the path would be "", since fname is the root
-    // of the FTree.  For files at other depths, the path would be the
-    // file path from the root to that file.
-
     // if file name doesn't exist
     if (fname == NULL) {
     	fprintf(stderr, "The path (%s) does not point to an existing entry!\n", fname);
@@ -45,15 +37,6 @@ struct TreeNode *generate_ftree(const char *fname) {
     	exit(1);
     }
 
-    // set name of the current file to this node's fname [FIX THIS]
-    fileSystem->fname = malloc(sizeof(char) * strlen(fname) + 1);
-
-    // check to see if malloc call failed
-    if (fileSystem->fname == NULL) {
-    	fprintf(stderr, "Fatal: failed to allocate bytes");
-    	exit(1);
-    }
-
     // initialize struct stat and then read in info about the current file 
     // to this struct stat using lstat
     struct stat stat_buf;
@@ -61,7 +44,7 @@ struct TreeNode *generate_ftree(const char *fname) {
     // error check lstat
     if (lstat(fname, &stat_buf) == -1) {
 	    fprintf(stderr, "lstat error");       
-	    exit(1);    
+	    return NULL;   
     }
 
     // set permissions attribute for this node
@@ -74,7 +57,14 @@ struct TreeNode *generate_ftree(const char *fname) {
     fileSystem->next = NULL;
 
     // get name of file (extract from fname argument)
-    if (tree_depth == 0) { strcpy(fileSystem->fname, fname); }
+    if (tree_depth == 0) { 
+    	fileSystem->fname = malloc(sizeof(char) * strlen(fname) + 1);
+    	if (fileSystem->fname == NULL) {
+            fprintf(stderr, "Fatal: failed to allocate bytes");
+            exit(1);
+        }
+    	strcpy(fileSystem->fname, fname); 
+    }
     else {
     	int len_to_slash = 0;
     	int count = strlen(fname) - 1;
@@ -96,15 +86,20 @@ struct TreeNode *generate_ftree(const char *fname) {
     	}
 
     	file_name[len_to_slash] = '\0';
+    	fileSystem->fname = malloc(sizeof(char) * strlen(file_name) + 1);
+    	if (fileSystem->fname == NULL) {
+            fprintf(stderr, "Fatal: failed to allocate bytes");
+            exit(1);
+        }
         strcpy(fileSystem->fname, file_name);
     }
 
-    // if regular file
+    // if regular file, set type to -
     if (S_ISREG(stat_buf.st_mode)) { 
     	fileSystem->type = '-'; 
     }
 
-    // if link
+    // if link, set tope to l
     else if (S_ISLNK(stat_buf.st_mode)) { 
     	fileSystem->type = 'l';
     }
@@ -241,24 +236,23 @@ void print_ftree(struct TreeNode *root) {
  * 
  */
 void deallocate_ftree (struct TreeNode *node) {
-   
-   // Your implementation here.
-
+   	
+   	// make sure node not null
 	if (node != NULL) {
-		if (node->type == 'd') {
-			if (node->contents == NULL) {
-				free(node);
-			} else {
-				deallocate_ftree(node->contents);
-			}
 
+	    if (node->next != NULL) {
+	    	deallocate_ftree(node->next);
+	    }
+
+		if (node->contents == NULL) {
+			// names must be deallocated first
+			free(node->fname);
+			free(node);
 		} else {
-			if (node->next != NULL) {
-				deallocate_ftree(node->next);
-				free(node);
-			} else {
-				free(node);
-			}
+			deallocate_ftree(node->contents);
+			// names must be deallocated first
+			free(node->fname);
+			free(node);
 		}
 	}
 
