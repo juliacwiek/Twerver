@@ -28,6 +28,12 @@ struct TreeNode *generate_ftree(const char *fname) {
     // of the FTree.  For files at other depths, the path would be the
     // file path from the root to that file.
 
+    // if file name doesn't exist
+    if (fname == NULL) {
+    	fprintf(stderr, "The path (%s) does not point to an existing entry!\n", fname);
+    	return NULL;
+    }
+
     // create new tree, where the root of the tree is the current file
     struct TreeNode *fileSystem = malloc(sizeof(struct TreeNode));
 
@@ -46,8 +52,31 @@ struct TreeNode *generate_ftree(const char *fname) {
     	exit(1);
     }
 
-    // make name of root of this tree be fname
-    strcpy(fileSystem->fname, fname);
+    // fix
+    //char file_name[1024];
+    int len_to_slash = 0;
+    int count = strlen(fname) - 1;
+    char *p = &fname[count];
+    while ((*p != '/') && (count > -1)) {
+    	len_to_slash++;
+    	p--;
+    	count--;
+    }
+
+    char file_name[1024];
+    int index = strlen(fname) - 1;
+    int q = len_to_slash - 1;
+
+    while (q > -1) {
+    	file_name[q] = fname[index];
+    	index--;
+    	q--;
+    }
+    file_name[len_to_slash] = '\0';
+    //fname[len_to_slash] = '\0';
+
+    //printf("%s\n", file_name);
+    strcpy(fileSystem->fname, file_name);
 
     // initialize struct stat and then read in info about the current file 
     // to this struct stat using lstat
@@ -180,9 +209,6 @@ void print_ftree(struct TreeNode *root) {
     printf("%*s", depth * 2, "");
 
     // Your implementation here.
-
-
-
     if (root != NULL) {
 
     	// if its a directory
