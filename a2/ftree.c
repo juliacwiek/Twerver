@@ -28,12 +28,12 @@ struct TreeNode *generate_ftree(const char *fname) {
     	return NULL;
     }
 
-    // create new tree, where the root of the tree is the current file
+    // otherwise, create new tree, where the root of the tree is the current file
     struct TreeNode *fileSystem = malloc(sizeof(struct TreeNode));
 
     // check to see if malloc call failed
     if (fileSystem == NULL) {
-    	fprintf(stderr, "Fatal: failed to allocate bytes");
+    	fprintf(stderr, "Fatal: failed to allocate bytes\n");
     	exit(1);
     }
 
@@ -47,28 +47,33 @@ struct TreeNode *generate_ftree(const char *fname) {
 	    return NULL;   
     }
 
-    // set permissions attribute for this node
-    int permissions = stat_buf.st_mode & 0777;
-    fileSystem->permissions = permissions;
+    // set permissions attribute
+    fileSystem->permissions = stat_buf.st_mode & 0777;
      
-    // set contents and next to null intitially (values may change
-    // if the file is a directory)
+    // set contents and next attributes to null intitially (may change
+    // if the file ends up being a directory)
     fileSystem->contents = NULL;
     fileSystem->next = NULL;
 
-    // get name of file (extract from fname argument)
+    // if tree_depth is 0, then name is the root of the fileSystem and the name
+    // attribute is set to the command line argument (ie. fname)
     if (tree_depth == 0) { 
     	fileSystem->fname = malloc(sizeof(char) * strlen(fname) + 1);
+
+    	// error check 
     	if (fileSystem->fname == NULL) {
-            fprintf(stderr, "Fatal: failed to allocate bytes");
+            fprintf(stderr, "Fatal: failed to allocate bytes\n");
             exit(1);
         }
+
     	strcpy(fileSystem->fname, fname); 
-    }
-    else {
-    	int len_to_slash = 0;
-    	int count = strlen(fname) - 1;
-    	char *p = &fname[count];
+
+    // otherwise, the file is not the root and we must extract the specific
+    // file name from fname	
+    } else {
+    	int len_to_slash = 0; // length of string to first "/" (from the end) in fname
+    	int count = strlen(fname) - 1; 
+    	const char *p = &fname[count];
     	while ((*p != '/') && (count > -1)) {
     		len_to_slash++;
     		p--;
@@ -87,33 +92,29 @@ struct TreeNode *generate_ftree(const char *fname) {
 
     	file_name[len_to_slash] = '\0';
     	fileSystem->fname = malloc(sizeof(char) * strlen(file_name) + 1);
+        
+        // error check
     	if (fileSystem->fname == NULL) {
-            fprintf(stderr, "Fatal: failed to allocate bytes");
+            fprintf(stderr, "Fatal: failed to allocate bytes\n");
             exit(1);
         }
+
         strcpy(fileSystem->fname, file_name);
     }
 
     // if regular file, set type to -
-    if (S_ISREG(stat_buf.st_mode)) { 
-    	fileSystem->type = '-'; 
-    }
+    if (S_ISREG(stat_buf.st_mode)) { fileSystem->type = '-'; }
 
     // if link, set tope to l
-    else if (S_ISLNK(stat_buf.st_mode)) { 
-    	fileSystem->type = 'l';
-    }
-
-    // else, the file is a directory
-    else {
-
+    else if (S_ISLNK(stat_buf.st_mode)) { fileSystem->type = 'l'; }
+    
+    else { // else, the file is a directory
     	tree_depth++;
-
     	fileSystem->type = 'd';
     	DIR *d_ptr = opendir(fname);
 
         if (d_ptr == NULL) {
-        	fprintf(stderr, "opendir error");
+        	fprintf(stderr, "opendir error\n");
         	exit(1);
         }
  
@@ -126,31 +127,29 @@ struct TreeNode *generate_ftree(const char *fname) {
         	
         	// current file is not . or ..
         	if ((strcmp(curr_file->d_name,".") != 0) && (strcmp(curr_file->d_name, "..") != 0)) {
-                
-                // if first file in the directory (will be contents attribute of the directory)
-        		if (files_traversed == 1) {
 
-        			char path[1024];
+        		char path[1024];
 
-        			// if file is in the current directory, path is file name
-        			if (strcmp(fname, ".") == 0) { 
-        				strcpy(path, curr_file->d_name); 
+        		// if file is in the current directory, path is file name
+        		if (strcmp(fname, ".") == 0) { 
+        			strcpy(path, curr_file->d_name); 
         				// set null pointer??
 
-        			// otherwise, path is in format abc/def/filename
-        			} else {
-        				strcpy(path, fname);
-        				strcat(path, "/");
-        				strcat(path, curr_file->d_name);
+        		// otherwise, path is in format abc/def/filename
+        		} else {
+        			strcpy(path, fname);
+        			strcat(path, "/");
+        			strcat(path, curr_file->d_name);
         				// set null pointer???
-        			}
+        		}
 
+                // if first file in the directory (will be contents attribute of the directory)
+        		if (files_traversed == 1) {
         			fileSystem->contents = generate_ftree(path);
         			files_traversed++;
         			
                 // else, not the first file in the directory
         		} else {
-        		
                     struct TreeNode *prev_node;
 
                     if (fileSystem->contents != NULL) {
@@ -159,28 +158,17 @@ struct TreeNode *generate_ftree(const char *fname) {
                     		curr_node = curr_node->next;
                     	}
                     	prev_node = curr_node;
+
                     } else { prev_node = NULL; }
-
-        			char path[1024];
-
-        			if (strcmp(fname, ".") == 0) { strcpy(path, curr_file->d_name); }
-
-        			else { 
-        				strcpy(path, fname);
-        				strcat(path, "/");
-        				strcat(path, curr_file->d_name);
-        			} 
-
         			prev_node->next = generate_ftree(path);
         		}
         	}
-
         }
 
         // close directory and check for errors while closing
         int error = closedir(d_ptr);
         if (error != 0) {
-        	fprintf(stderr, "closedir error");
+        	fprintf(stderr, "closedir error\n");
         	exit(1);
         }
     }
@@ -198,23 +186,22 @@ struct TreeNode *generate_ftree(const char *fname) {
  */
 void print_ftree(struct TreeNode *root) {
 	
-    // Here's a trick for remembering what depth (in the tree) you're at
-    // and printing 2 * that many spaces at the beginning of the line.
     static int depth = 0;
     printf("%*s", depth * 2, "");
 
-    // Your implementation here.
     if (root != NULL) {
 
     	// if its a directory
     	if (root->type == 'd') {
     		printf("===== %s (%c%o) =====\n", root->fname, root->type, root->permissions);
-
+            
+            // enters into directory, depth increases
     		depth++;
     		if (root->contents != NULL) {
     			print_ftree(root->contents);
     		}
-
+            
+            // exits out of directory, depth decreases
             depth--;
     		if (root->next != NULL) {
     			print_ftree(root->next);
@@ -222,6 +209,7 @@ void print_ftree(struct TreeNode *root) {
 
     	// if its a link or regular file
     	} else {
+    		// no increase or decrease in depth
     		printf("%s (%c%o)\n", root->fname, root->type, root->permissions);
     		if (root->next != NULL) {
     			print_ftree(root->next);
