@@ -15,6 +15,11 @@
  */
 long num_reads, seconds;
 
+void handler(int sig) {
+    printf(MESSAGE, num_reads, seconds);
+    exit(0);
+}
+
 
 /* The first command-line argument is the number of seconds to set a timer to run.
  * The second argument is the name of a binary file containing 100 ints.
@@ -28,6 +33,21 @@ int main(int argc, char **argv) {
     }
     seconds = strtol(argv[1], NULL, 10);
 
+    // Install an handler for SIGPROF
+    struct sigaction newact;
+    newact.sa_flags = 0;
+    newact.sa_handler = handler;
+    sigemptyset(&newact.sa_mask);
+    sigaction(SIGPROF, &newact, NULL);
+
+    // Set the timer to send SIGPROF signal
+    struct itimerval timer;
+    timer.it_interval.tv_sec = 0;
+    timer.it_interval.tv_usec = 0;
+    timer.it_value.tv_sec = seconds;
+    timer.it_value.tv_usec = 0;
+    setitimer(ITIMER_PROF, &timer, NULL);
+
     FILE *fp;
     if ((fp = fopen(argv[2], "r")) == NULL) {
       perror("fopen");
@@ -37,11 +57,13 @@ int main(int argc, char **argv) {
     /* In an infinite loop, read an int from a random location in the file,
      * and print it to stderr.
      */
+
+    int num;
     for (;;) {
-
-
-
-
+    	fseek(fp, random() % 100 * sizeof(int), SEEK_SET);
+        fread(&num, sizeof(int), 1, fp);
+        fprintf(stderr, "%d\n", num);
+        num_reads++;
     }
     return 1; // something is wrong if we ever get here!
 }
