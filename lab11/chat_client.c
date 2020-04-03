@@ -49,10 +49,10 @@ int main(void) {
         exit(1);
     }
 
-    //Write username immediate after connection
-    int nbytes;
-    nbytes = write(sock_fd, username, BUF_SIZE);
-    if (nbytes != BUF_SIZE) {
+    // Write username immediate after connection
+    int n_bytes;
+    n_bytes = write(sock_fd, username, BUF_SIZE);
+    if (n_bytes != BUF_SIZE) {
         perror("Write username");
         exit(1);
     }
