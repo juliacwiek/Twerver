@@ -46,7 +46,13 @@ int accept_connection(int fd, struct sockname *usernames) {
     }
 
     usernames[user_index].sock_fd = client_fd;
-    usernames[user_index].username = NULL;
+    char *username = malloc(sizeof(char) * BUF_SIZE);
+    int nbytes = read(client_fd, username, BUF_SIZE);
+    if (nbytes != BUF_SIZE) {
+        perror("Read username");
+        exit(1);
+    }
+    usernames[user_index].username = username;
     return client_fd;
 }
 
@@ -59,17 +65,28 @@ int read_from(int client_index, struct sockname *usernames) {
     int fd = usernames[client_index].sock_fd;
     char buf[BUF_SIZE + 1];
 
-    /*
-     * In Lab 10, you focused on handling partial reads. For this lab, you do
-     * not need handle partial reads.  Because of that, this server program
-     * does not check for "\r\n" when it reads from the client. 
-     */
-
     int num_read = read(fd, &buf, BUF_SIZE);
-    buf[num_read] = '\0'; 
-    if (num_read == 0 || write(fd, buf, strlen(buf)) != strlen(buf)) {
+    buf[num_read] = '\0';
+    if (num_read == 0) {
         usernames[client_index].sock_fd = -1;
+        free(usernames[client_index].username);
+        usernames[client_index].username = NULL;
         return fd;
+    }
+    char result[BUF_SIZE];
+    strcpy(result, usernames[client_index].username);
+    strcat(result, ": ");
+    strcat(result, buf);
+    for (int i = 0; i < MAX_CONNECTIONS; i++) {
+        struct sockname *client = usernames + i;
+        if (client->sock_fd == -1) {
+            continue;
+        }
+        int nbytes = write(client->sock_fd, result, strlen(result));
+        if (nbytes != strlen(result)) {
+            perror("write to client");
+            exit(1);
+        } 
     }
 
     return 0;
@@ -167,6 +184,6 @@ int main(void) {
         }
     }
 
-    // Should never get here.
+    // Should never get here.	
     return 1;
 }

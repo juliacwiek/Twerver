@@ -13,6 +13,18 @@
 #define BUF_SIZE 128
 
 int main(void) {
+
+	// Ask the user for their username
+    char username[BUF_SIZE + 1];
+    printf("Please input your username: ");
+    fgets(username, BUF_SIZE, stdin);
+    for (int i = 0; i < BUF_SIZE; i++) {
+        if (username[i] == '\n') {
+            username[i] = '\0';
+            break;
+        }
+    }
+
     // Create the socket FD.
     int sock_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (sock_fd < 0) {
@@ -37,38 +49,61 @@ int main(void) {
         exit(1);
     }
 
-    // Get the user to provide a name.
-    char buf[2 * BUF_SIZE + 1];            // 2x to allow for usernames
-    printf("Please enter a username: ");
-    fflush(stdout);
-    int num_read = read(STDIN_FILENO, buf, BUF_SIZE);
-    buf[num_read] = '\0';
-    write(sock_fd, buf, num_read);
+    //Write username immediate after connection
+    int nbytes;
+    nbytes = write(sock_fd, username, BUF_SIZE);
+    if (nbytes != BUF_SIZE) {
+        perror("Write username");
+        exit(1);
+    }
 
-    // Read input from the user, send it to the server, and then accept the
-    // echo that returns. Exit when stdin is closed.
+    fd_set all_fds;
+    int max_fd;
+    FD_ZERO(&all_fds);
+    FD_SET(sock_fd, &all_fds);
+    FD_SET(STDIN_FILENO, &all_fds);
+    if (sock_fd > STDIN_FILENO) {
+        max_fd = sock_fd;
+    } else {
+        max_fd = STDIN_FILENO;
+    }
+
+    char buf[BUF_SIZE + 1];
     while (1) {
-        int num_read = read(STDIN_FILENO, buf, BUF_SIZE);
-        if (num_read == 0) {
-            break;
-        }
-        buf[num_read] = '\0';
-
-        /* 
-         * We should really send "\r\n" too, so the server can identify partial 
-         * reads, but you are not required to handle partial reads in this lab.
-         */
-
-        int num_written = write(sock_fd, buf, num_read);
-        if (num_written != num_read) {
-            perror("client: write");
-            close(sock_fd);
+        fd_set listen_fds = all_fds;
+        int nready = select(max_fd + 1, &listen_fds, NULL, NULL, NULL);
+        if (nready < 0) {
+            perror("select");
             exit(1);
         }
 
-        num_read = read(sock_fd, buf, BUF_SIZE);
-        buf[num_read] = '\0';
-        printf("Received from server: %s", buf);
+        if (FD_ISSET(STDIN_FILENO, &listen_fds)) {
+            int num_read = read(STDIN_FILENO, buf, BUF_SIZE);
+            if (num_read == 0) {
+                break;
+            }
+            buf[num_read] = '\0';         
+
+            int num_written = write(sock_fd, buf, num_read);
+            if (num_written != num_read) {
+                perror("client: write");
+                close(sock_fd);
+                exit(1);
+            }
+        }
+
+        if (FD_ISSET(sock_fd, &listen_fds)) {
+            int num_read = read(sock_fd, buf, BUF_SIZE);
+            if (num_read < 0) {
+                perror("read from server");
+                exit(1);
+            }
+            if (num_read == 0) {
+                break;
+            }
+            buf[num_read] = '\0';
+            printf("%s", buf);
+        }
     }
 
     close(sock_fd);
