@@ -144,8 +144,9 @@ int main(void) {
 
     // The client accept - message accept loop. First, we prepare to listen to multiple
     // file descriptors by initializing a set of file descriptors.
-    int max_fd = sock_fd;
+    
     fd_set all_fds;
+    int max_fd = sock_fd;
     FD_ZERO(&all_fds);
     FD_SET(sock_fd, &all_fds);
 
@@ -170,15 +171,15 @@ int main(void) {
 
         // Next, check the clients.
         // NOTE: We could do some tricks with nready to terminate this loop early.
-        for (int index = 0; index < MAX_CONNECTIONS; index++) {
-            if (usernames[index].sock_fd > -1 && FD_ISSET(usernames[index].sock_fd, &listen_fds)) {
+        for (int i = 0; i < MAX_CONNECTIONS; i++) {
+            if (usernames[i].sock_fd > -1 && FD_ISSET(usernames[i].sock_fd, &listen_fds)) {
                 // Note: never reduces max_fd
-                int client_closed = read_from(index, usernames);
+                int client_closed = read_from(i, usernames);
                 if (client_closed > 0) {
                     FD_CLR(client_closed, &all_fds);
                     printf("Client %d disconnected\n", client_closed);
                 } else {
-                    printf("Echoing message from client %d\n", usernames[index].sock_fd);
+                    printf("Echoing message from client %d\n", usernames[i].sock_fd);
                 }
             }
         }
