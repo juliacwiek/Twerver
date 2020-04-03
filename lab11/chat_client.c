@@ -18,9 +18,9 @@ int main(void) {
     char username[BUF_SIZE + 1];
     printf("Please input your username: ");
     fgets(username, BUF_SIZE, stdin);
-    for (int i = 0; i < BUF_SIZE; i++) {
-        if (username[i] == '\n') {
-            username[i] = '\0';
+    for (int index = 0; index < BUF_SIZE; index++) {
+        if (username[index] == '\n') {
+            username[index] = '\0';
             break;
         }
     }
@@ -49,10 +49,10 @@ int main(void) {
         exit(1);
     }
 
-    // Write username immediate after connection
-    int n_bytes;
-    n_bytes = write(sock_fd, username, BUF_SIZE);
-    if (n_bytes != BUF_SIZE) {
+    // Write username immediately after connection
+    int nbytes;
+    nbytes = write(sock_fd, username, BUF_SIZE);
+    if (nbytes != BUF_SIZE) {
         perror("Write username");
         exit(1);
     }
@@ -78,14 +78,14 @@ int main(void) {
         }
 
         if (FD_ISSET(STDIN_FILENO, &listen_fds)) {
-            int num_read = read(STDIN_FILENO, buf, BUF_SIZE);
-            if (num_read == 0) {
+            int nRead = read(STDIN_FILENO, buf, BUF_SIZE);
+            if (nRead == 0) {
                 break;
             }
-            buf[num_read] = '\0';         
+            buf[nRead] = '\0';         
 
-            int num_written = write(sock_fd, buf, num_read);
-            if (num_written != num_read) {
+            int nWritten = write(sock_fd, buf, nRead);
+            if (nWritten != nRead) {
                 perror("client: write");
                 close(sock_fd);
                 exit(1);
@@ -93,15 +93,15 @@ int main(void) {
         }
 
         if (FD_ISSET(sock_fd, &listen_fds)) {
-            int num_read = read(sock_fd, buf, BUF_SIZE);
-            if (num_read < 0) {
+            int nRead = read(sock_fd, buf, BUF_SIZE);
+            if (nRead < 0) {
                 perror("read from server");
                 exit(1);
             }
-            if (num_read == 0) {
+            if (nRead == 0) {
                 break;
             }
-            buf[num_read] = '\0';
+            buf[nRead] = '\0';
             printf("%s", buf);
         }
     }
