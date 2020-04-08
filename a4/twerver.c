@@ -24,7 +24,7 @@
 #define INVAL_USERNAME_MSG "You have entered an invalid username, please enter a new one: \r\n"
 #define FOLLOWING_LIMIT_MSG "You have already reached your following limit, so you can not follow this user.\r\n"
 #define NO_CLIENT_MSG "No active client with this username exists.\r\n"
-#define INVAL_COMMAND_MSG "Invalid Command.\r\n"
+#define INVAL_COMMAND_MSG "Invalid command.\r\n"
 #define USERNAME_TAKEN_MSG "This username is taken. Please enter a new one: \r\n"
 #define NO_MORE_MSGS "You have reached your message limit.\r\n"
 #define NO_MORE_FOLLOWERS "This user cannot have any more followers.\r\n"
