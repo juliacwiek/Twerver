@@ -21,15 +21,13 @@
 #define FOLLOW_MSG "follow"
 #define UNFOLLOW_MSG "unfollow"
 #define QUIT_MSG "quit"
-#define USERNAME_MSG "Please enter your username: \r\n"
 #define INVAL_USERNAME_MSG "You have entered an invalid username, please enter a new one: \r\n"
 #define FOLLOWING_LIMIT_MSG "You have already reached your following limit, so you can not follow this user.\r\n"
 #define NO_CLIENT_MSG "No active client with this username exists.\r\n"
-#define INVAL_COMMAND_MSG "You have entered an invalid command.\r\n"
+#define INVAL_COMMAND_MSG "Invalid Command.\r\n"
 #define USERNAME_TAKEN_MSG "This username is taken. Please enter a new one: \r\n"
 #define NO_MORE_MSGS "You have reached your message limit.\r\n"
 #define NO_MORE_FOLLOWERS "This user cannot have any more followers.\r\n"
-#define CANNOT_FOLLOW "You cannot follow this user.\r\n"
 #define BUF_SIZE 256
 #define MSG_LIMIT 8
 #define FOLLOW_LIMIT 5
@@ -120,9 +118,9 @@ void remove_client(struct client **clients, int fd) {
             }
 
             // SECTION 2: remove client from ac's *FOLLOWING* list, if client exists in it
-            for (int i = 0; i < FOLLOW_LIMIT; i++) {  // iterate through FOLLOWING list
-                if (((ac->following)[i]) != NULL && ((ac->following)[i]->fd == fd)) {
-                    (ac->following)[i] = NULL; // remove client from list
+            for (int a = 0; a < FOLLOW_LIMIT; a++) {  // iterate through FOLLOWING list
+                if (((ac->following)[a]) != NULL && ((ac->following)[a]->fd == fd)) {
+                    (ac->following)[a] = NULL; // remove client from list
                     break;
                 }
             }
@@ -146,12 +144,9 @@ void remove_client(struct client **clients, int fd) {
 int find_network_newline(const char *buf, int num_bytes) {
     int index = 0;
     while (index < num_bytes - 1) {
-        if (buf[index] == '\r' && buf[index + 1] == '\n') {
-            return index + 2;
-        }
+        if (buf[index] == '\r' && buf[index + 1] == '\n') { return index + 2; }
         index++;
-    }
-    return -1;
+    } return -1;
 }
 
 int read_from(struct client **q, int *inbuf) {
@@ -174,11 +169,11 @@ int read_from(struct client **q, int *inbuf) {
         c->in_ptr = c->inbuf + (*inbuf);
     } 
 
-    if (nbytes == 0) { // client has disconnected
+    if (nbytes == 0) { // Client has disconnected
         return -1;
     }
     
-    return 1; // read happened properly
+    return 1; // Read happened properly
 }
 
 
@@ -256,14 +251,21 @@ void handle_follow(struct client *client, char *username, struct client **active
         }
     }
 
-    // user client is trying to follow cannot be followed anymore bc active cli reached limit
-    if (!can_be_followed || !found_match) {
-        int wbytes = write(client->fd, CANNOT_FOLLOW, strlen(CANNOT_FOLLOW));
-        if (wbytes != strlen(CANNOT_FOLLOW)) {
+    // The user that the client wants to follow does not exist
+    if (!found_match) {
+        int wbytes = write(client->fd, NO_CLIENT_MSG, strlen(NO_CLIENT_MSG));
+        if (wbytes != strlen(NO_CLIENT_MSG)) {
             remove_client(active_clients, client->fd);
         } return;
+    }   
 
-    } 
+    // The user can't be followed as he/she has reached his/her follower limit
+    else if (!can_be_followed) {
+        int wbytes = write(client->fd, NO_MORE_FOLLOWERS, strlen(NO_MORE_FOLLOWERS));
+        if (wbytes != strlen(NO_MORE_FOLLOWERS)) {
+            remove_client(active_clients, client->fd);
+        } return;
+    }
 
     fprintf(stderr, "%s has followed a user\n", client->username);
     return;
@@ -308,8 +310,9 @@ void handle_show(struct client *client, struct client **active_clients) {
             fprintf(stderr, "username %s\n", (client->following)[i]->username);
             for (int a = 0; a < MSG_LIMIT; a++) { // iterate through the followee's messages
                 if ((client->following)[i]->message[a][0] != '\0') {
-                    // write the message to this client
-                    char new_message[100];
+
+                    // Write the message to this client
+                    char new_message[BUF_SIZE];
                     strcpy(new_message, (client->following)[i]->username);
                     strcat(new_message, ": ");
                     strcat(new_message, (client->following)[i]->message[a]);
@@ -325,8 +328,6 @@ void handle_show(struct client *client, struct client **active_clients) {
             } 
         }
     }
-
-   
 }
 
 void handle_send(struct client *client, char *message, struct client **active_clients) {
@@ -339,7 +340,7 @@ void handle_send(struct client *client, char *message, struct client **active_cl
         }
     }
 
-    if (num_messages == MSG_LIMIT) {
+    if (num_messages == MSG_LIMIT) { // client has reached the max amount of messages he can send
         int wbytes = write(client->fd, NO_MORE_MSGS, strlen(NO_MORE_MSGS));
         if (wbytes != strlen(NO_MORE_MSGS)) {
             remove_client(active_clients, client->fd);
@@ -348,7 +349,7 @@ void handle_send(struct client *client, char *message, struct client **active_cl
 
     // add message to clients message list
     for (int i = 0; i < MSG_LIMIT; i++) {
-        if ((client->message[i][0] == '\0')) {
+        if ((client->message[i][0] == '\0')) { // if message slot is empty 
             strcpy(client->message[i], message);
             (client->message[i])[strlen(message)] = '\0';
             break;
@@ -368,7 +369,6 @@ void handle_send(struct client *client, char *message, struct client **active_cl
         if ((client->followers)[i] != NULL) {
             int wbytes = write((client->followers)[i]->fd, new_message, strlen(new_message));
             if (wbytes != strlen(new_message)) {
-                fprintf(stderr, "ya no work\n");
                 remove_client(active_clients, (client->followers)[i]->fd);
             }
         }
@@ -385,12 +385,19 @@ void handle_inval_command(struct client *client, struct client **active_clients)
 
 // Send the message in s to all clients in active_clients. 
 void announce(struct client **active_clients, char *s) {
-    for (struct client *ac = *active_clients; ac != NULL; ac = ac->next) {
-        int wbytes = write(ac->fd, s, strlen(s));
+    for (struct client *a_cli = *active_clients; a_cli != NULL; a_cli = a_cli->next) {
+        int wbytes = write(a_cli->fd, s, strlen(s));
         if (wbytes != strlen(s)) {
-            remove_client(active_clients, ac->fd);
+            remove_client(active_clients, a_cli->fd);
         } return;
     }
+}
+
+void activate_client(struct client **active_clients, struct client **new_clients) {
+    struct client *c_cpy = (*new_clients)->next;
+    (*new_clients)->next = *active_clients;
+    *active_clients = *new_clients;
+    *new_clients = c_cpy;
 }
 
 int main (int argc, char **argv) {
@@ -483,35 +490,32 @@ int main (int argc, char **argv) {
                         // TODO: handle input from a new client who has not yet
                         // entered an acceptable name
 
-                        int inbuf = 0;
-                        int result = read_from(&p, &inbuf);
+                        int num_bytes = 0;
+                        int result = read_from(&p, &num_bytes);
+
+                        // If client has disconnected during the read
                         if (result == -1) {
                             remove_client(&new_clients, p->fd);
                         }
                         
-                        // if 0, username valid and loop ends, if 1, username invalid
+                        // If 0, username valid and loop ends, if 1, username invalid
                         int invalid_username = handle_username(p, p->inbuf, &active_clients);
                         
                         if (invalid_username == 0) {
 
                             // Remove them from the new_clients list and add them to the active_clients list
-                            struct client *copy = new_clients->next;
-                            new_clients->next = active_clients;
-                            active_clients = new_clients;
-                            new_clients = copy;
+                            activate_client(&active_clients, &new_clients);
 
-                            // Notify all active_clients
-                            char welcome_msg[1024];
-                            welcome_msg[100] = '\0';
+                            // Create custom join message
+                            char welcome_msg[BUF_SIZE];
                             strcpy(welcome_msg, p->username);
                             strcat(welcome_msg, " has just joined!\r\n");
-                            fprintf(stderr, "%s", welcome_msg); // write message to stdout
-                            
-                            for (struct client *a_cli = active_clients; a_cli != NULL; a_cli = a_cli->next) {
-                                if (write(a_cli->fd, welcome_msg, strlen(welcome_msg)) == -1) {
-                                    remove_client(&active_clients, a_cli->fd);
-                                }
-                            }
+
+                            // Print this message to stdout
+                            fprintf(stderr, "%s", welcome_msg); 
+
+                            // Write this message to all active clients
+                            announce(&active_clients, welcome_msg);
                         }
                     }
                 } 
@@ -521,40 +525,39 @@ int main (int argc, char **argv) {
                         if (cur_fd == p->fd) {
 
                                 // Start process to begin reading from client
-                                int inbuf = 0;
-                                int result = read_from(&p, &inbuf);
+                                int num_bytes = 0;
+                                int result = read_from(&p, &num_bytes);
 
-                                if (result == -1) {
+                                if (result == -1) { // Client disconnected during read
                                     remove_client(&active_clients, p->fd);
                                 }
 
-                                char copy[100];
+                                // Create a copy of p->inbuf, otherwise p->inbuf wil be modified in below code
+                                char copy[BUF_SIZE];
                                 int i;
                                 for (i = 0; i < strlen(p->inbuf); i++) {
                                     copy[i] = p->inbuf[i];
                                 }
                                 copy[i] = '\0';
 
-                                // split command with spaces
+                                // Split command read from client with spaces
                                 const char split[2] = " ";
                                 char *first_word; // word before first space (if exists)
                                 char *second; // word(s) after first space (if exists)
                                 first_word = strtok(copy, split);
                                 second = strtok(NULL, split);
-                                char second_word[100];
+                                char second_word[200];
 
-                                if (second != NULL) {
+                                if (second != NULL) { // the client entered more than just one word
                                     int index = strlen(first_word) + 1;
-                                    
                                     int i;
                                     for (i = 0; i < strlen(p->inbuf) - strlen(first_word) + 1; i++) {
                                         second_word[i] = p->inbuf[index];
                                         index++;
                                     }
-
                                     second_word[i] = '\0';
 
-                                } else {
+                                } else { // the client entered only one word
                                     second_word[0] = '\0';
                                 }
                                         
