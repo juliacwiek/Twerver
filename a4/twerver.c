@@ -28,6 +28,8 @@
 #define INVAL_COMMAND_MSG "You have entered an invalid command.\r\n"
 #define USERNAME_TAKEN_MSG "This username is taken. Please enter a new one: \r\n"
 #define NO_MORE_MSGS "You have reached your message limit.\r\n"
+#define NO_MORE_FOLLOWERS "This user cannot have any more followers.\r\n"
+#define CANNOT_FOLLOW "You cannot follow this user.\r\n"
 #define BUF_SIZE 256
 #define MSG_LIMIT 8
 #define FOLLOW_LIMIT 5
@@ -213,6 +215,9 @@ void handle_follow(struct client *client, char *username, struct client **active
 
     // STEP 1: check if this client has followed the max amount of people already
     int num_following = 0; 
+    int can_be_followed = 0;
+    int found_match = 0;
+
     for (int i = 0; i < FOLLOW_LIMIT; i++) { // iterate through client's following list
         if ((client->following)[i] != NULL) { num_following++; }
     }
@@ -235,19 +240,33 @@ void handle_follow(struct client *client, char *username, struct client **active
             for (int i = 0; i < FOLLOW_LIMIT; i++) {
                 if ((client->following)[i] == NULL) { 
                     (client->following)[i] = ac; 
-                    fprintf(stderr, "%s has followed %s\n", client->username, ac->username);
-                    return; // user has been followed!
+                    found_match = 1;
+                    break;
+                }
+            }
+
+            // add the client to the active clients followers list
+            for (int a = 0; a < FOLLOW_LIMIT; a++) {
+                if ((ac->followers)[a] == NULL) { 
+                    (ac->followers)[a] = client; 
+                    can_be_followed = 1;
+                    break;
                 }
             }
         }
     }
 
-    // if it reaches this part of the code, means that no active client with that 
-    // username has been found
-    int wbytes = write(client->fd, NO_CLIENT_MSG, strlen(NO_CLIENT_MSG));
-    if (wbytes != strlen(NO_CLIENT_MSG)) {
-        remove_client(active_clients, client->fd);
-    } return;
+    // user client is trying to follow cannot be followed anymore bc active cli reached limit
+    if (!can_be_followed || !found_match) {
+        int wbytes = write(client->fd, CANNOT_FOLLOW, strlen(CANNOT_FOLLOW));
+        if (wbytes != strlen(CANNOT_FOLLOW)) {
+            remove_client(active_clients, client->fd);
+        } return;
+
+    } 
+
+    fprintf(stderr, "%s has followed a user\n", client->username);
+    return;
 }
 
 void handle_unfollow(struct client *client, char *username, struct client **active_clients) {
@@ -258,24 +277,19 @@ void handle_unfollow(struct client *client, char *username, struct client **acti
         if (strcmp(ac->username, username) == 0) { // found username match
             // remove the active client with this username from the client's following list
             for (int i = 0; i < FOLLOW_LIMIT; i++) { 
-                if ((client->following)[i] != NULL && (strcmp((client->following)[i]->username, username) == 0)) { 
-                    (client->following)[i] = NULL; 
+                if ((client->following)[i] != NULL && (strcmp((client->following)[i]->username, username) == 0)) {
+                    (client->following)[i] = NULL;
                     fprintf(stderr, "%s has unfollowed %s\n", client->username, ac->username);
                 }
 
-                fprintf(stderr, "no seg fault here yet\n");
-
                 // now remove the client from the unfollowed user's follower list 
                 for (int a = 0; a < FOLLOW_LIMIT; a++) { // traverse follower list of unfollowed user
-                    if ((((client->following)[i]->followers)[a] != NULL) &&
-                        (strcmp(((client->following)[i]->followers)[a]->username, client->username) == 0)) {
-
-
-                        ((client->following)[i]->followers)[a] = NULL; // client removed
+                    if (((ac->followers[a]) != NULL) && ((ac->followers[a])->fd == client->fd)) {
+                        (ac->followers[a]) = NULL;
                         return;
                     }
                 }
-            }
+            }  
         }
     }
 
@@ -312,7 +326,7 @@ void handle_show(struct client *client, struct client **active_clients) {
         }
     }
 
-    fprintf(stderr, "goes here\n");
+   
 }
 
 void handle_send(struct client *client, char *message, struct client **active_clients) {
@@ -567,7 +581,7 @@ int main (int argc, char **argv) {
                                 else { handle_inval_command(p, &active_clients); }
                         }
                     }
-                }
+                } 
             }
         }
     }
